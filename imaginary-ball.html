@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>计算假想球</title>
+  <style>
+    #canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: -1;
+    }
+
+    .block-text {
+      width: 50px;
+      display: inline-block;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="canvas"></canvas>
+  <div>
+    <span class="block-text"> 0颗球</span>
+    <input type="range" min="0" max="1" value="0.5" id="positionRange" step="0.01" />
+    1颗球
+  </div>
+  <p>
+    从袋口到目标球连线，获得 <font color="red">A</font> 点。<br />
+    在正视图下，获得最边上的 <font color="green">B</font> 点。<br />
+    以<font color="red">A</font> 点为中心点，镜像 <font color="green">B</font> 点，获得 <font color="blue">C</font> 点。<br />
+    <font color="blue">C</font> 点则为假想球最边的位置，也就是母球击打边的位置。<br />
+    <br />
+    掌握此方法，中杆方式击打，100%进球。
+  </p>
+  <script>
+    const cnv = document.getElementById('canvas');
+    const positionRange = document.getElementById('positionRange');
+    const ctx = cnv.getContext('2d');
+    const dpr = window.devicePixelRatio;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+    const r = Math.min(width, height) / 9 / 2;
+    const paddingText = 10;
+    const cueBallPos = {
+      x: width / 2,
+      y: height / 2 + 3 * 2 * r
+    }
+    const targetBallPos = {
+      x: width / 2,
+      y: height / 2,
+    }
+    // 计算球
+    const shadowBallPos = {
+      x: width / 2,
+      y: targetBallPos.y + 2 * r,
+    }
+    const predictTargetBallPos = {
+      x: width / 2,
+      y: targetBallPos.y - 2 * 2 * r,
+    }
+    const angleDisplayPos = {
+      x: shadowBallPos.x,
+      y: shadowBallPos.y,
+      text: 0
+    }
+    const frontViewTargetBallPos = {
+      x: width / 2 + 3 * 2 * r,
+      y: height / 2,
+    }
+    const frontViewShadowBallPos = {
+      x: width / 2 + 3 * 2 * r,
+      y: height / 2,
+    }
+
+
+    cnv.style.width = width + 'px';
+    cnv.style.height = height + 'px';
+    cnv.width = width * dpr;
+    cnv.height = height * dpr;
+    ctx.scale(dpr, dpr);
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = "middle"
+    ctx.lineWidth = 2;
+
+    rangeInput({
+      target: positionRange
+    })
+    positionRange.addEventListener('input', rangeInput)
+
+
+    function rangeInput(e) {
+      const shandowBallY = Math.sqrt(Math.pow(2 * r, 2) - Math.pow(e.target.value * 2 * r, 2));
+      const sinAngle = shandowBallY / (2 * r);
+      const cosAngle = e.target.value * 2 * r / (2 * r)
+
+      shadowBallPos.x = cueBallPos.x = width / 2 + e.target.value * 2 * r;
+      shadowBallPos.y = targetBallPos.y + shandowBallY;
+
+      angleDisplayPos.x = shadowBallPos.x + r * cosAngle;
+      angleDisplayPos.y = shadowBallPos.y + r * sinAngle;
+      angleDisplayPos.text = ~~(Math.asin(cosAngle) * 180 / Math.PI);
+
+      predictTargetBallPos.y = targetBallPos.y - 2 * 2 * r * sinAngle;
+      predictTargetBallPos.x = targetBallPos.x - 2 * 2 * r * cosAngle;
+
+      frontViewShadowBallPos.x = width / 2 + 3 * 2 * r + e.target.value * 2 * r;
+
+      render();
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, width, height);
+
+      // 目标球
+      ctx.restore();
+      ctx.save();
+      ctx.beginPath();
+      ctx.strokeStyle = '#000';
+      ctx.arc(targetBallPos.x, targetBallPos.y, r, 0, Math.PI * 2);
+      ctx.strokeStyle = 'green';
+      ctx.stroke();
+      ctx.fillText('目标球', targetBallPos.x - r - paddingText, targetBallPos.y);
+      ctx.beginPath();
+      ctx.arc(targetBallPos.x, targetBallPos.y, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 目标球结果
+      ctx.restore();
+      ctx.save();
+      ctx.beginPath();
+      ctx.strokeStyle = 'blue';
+      ctx.arc(predictTargetBallPos.x, predictTargetBallPos.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillText('结果', predictTargetBallPos.x - r - paddingText, predictTargetBallPos.y);
+      ctx.beginPath();
+      ctx.arc(predictTargetBallPos.x, predictTargetBallPos.y, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 母球
+      ctx.restore();
+      ctx.save();
+      ctx.beginPath();
+      ctx.strokeStyle = '#000';
+      ctx.arc(cueBallPos.x, cueBallPos.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillText('母球', cueBallPos.x - r - paddingText, cueBallPos.y);
+      ctx.beginPath();
+      ctx.arc(cueBallPos.x, cueBallPos.y, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 影子球
+      ctx.restore();
+      ctx.save();
+      ctx.beginPath();
+      ctx.strokeStyle = '#000';
+      ctx.arc(shadowBallPos.x, shadowBallPos.y, r, 0, Math.PI * 2);
+      ctx.setLineDash([2, 3]);
+      ctx.stroke();
+      ctx.fillText('假想球', shadowBallPos.x - r - paddingText, shadowBallPos.y);
+      ctx.beginPath();
+      ctx.arc(shadowBallPos.x, shadowBallPos.y, 2, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 两球连线
+      ctx.restore();
+      ctx.save();
+      // 母球 -> 影子球
+      ctx.beginPath();
+      ctx.strokeStyle = 'black';
+      ctx.moveTo(cueBallPos.x, cueBallPos.y);
+      ctx.lineTo(shadowBallPos.x, targetBallPos.y);
+      ctx.stroke();
+      // 目标球 -> 影子球
+      ctx.beginPath();
+      ctx.strokeStyle = 'green';
+      ctx.moveTo(targetBallPos.x, targetBallPos.y);
+      ctx.lineTo(angleDisplayPos.x, angleDisplayPos.y);
+      ctx.stroke();
+      ctx.textAlign = 'left';
+      ctx.fillText(angleDisplayPos.text + '°', angleDisplayPos.x + paddingText, angleDisplayPos.y);
+      // A
+      ctx.beginPath();
+      ctx.arc(targetBallPos.x + (shadowBallPos.x - targetBallPos.x) / 2, targetBallPos.y + (shadowBallPos.y - targetBallPos.y) / 2, 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'red';
+      ctx.fill();
+      ctx.font = '18px sans-serif';
+      ctx.fillText('A', targetBallPos.x + (shadowBallPos.x - targetBallPos.x) / 2 + paddingText, targetBallPos.y + (shadowBallPos.y - targetBallPos.y) / 2);
+      // B
+      ctx.beginPath();
+      ctx.arc(targetBallPos.x + r, targetBallPos.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'green';
+      ctx.fill();
+      ctx.fillText('B', targetBallPos.x + r + paddingText, targetBallPos.y);
+      // C
+      ctx.beginPath();
+      ctx.textAlign = 'right';
+      ctx.arc(shadowBallPos.x - r, targetBallPos.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'blue';
+      ctx.fill();
+      ctx.fillText('C', shadowBallPos.x - r - paddingText, targetBallPos.y);
+
+      // 目标球 -> 结果
+      ctx.beginPath();
+      ctx.strokeStyle = 'blue';
+      ctx.moveTo(targetBallPos.x, targetBallPos.y);
+      ctx.lineTo(predictTargetBallPos.x, predictTargetBallPos.y);
+      ctx.stroke();
+
+      // 正视图
+      ctx.restore();
+      ctx.save();
+      // 目标球
+      ctx.beginPath();
+      ctx.strokeStyle = 'green';
+      ctx.arc(frontViewTargetBallPos.x, frontViewTargetBallPos.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      // 影子球
+      ctx.beginPath();
+      ctx.strokeStyle = '#000';
+      ctx.arc(frontViewShadowBallPos.x, frontViewShadowBallPos.y, r, 0, Math.PI * 2);
+      ctx.setLineDash([2, 3]);
+      ctx.stroke();
+      // 点
+      ctx.beginPath();
+      ctx.arc(frontViewTargetBallPos.x + (frontViewShadowBallPos.x - frontViewTargetBallPos.x) / 2, frontViewTargetBallPos.y + (frontViewShadowBallPos.y - frontViewTargetBallPos.y) / 2, 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'red';
+      ctx.fill();
+      ctx.font = '18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('A', frontViewTargetBallPos.x + (frontViewShadowBallPos.x - frontViewTargetBallPos.x) / 2, frontViewTargetBallPos.y + (frontViewShadowBallPos.y - frontViewTargetBallPos.y) / 2 + paddingText);
+      ctx.beginPath();
+      ctx.arc(frontViewTargetBallPos.x + r, frontViewTargetBallPos.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'green';
+      ctx.fill();
+      ctx.fillText('B', frontViewTargetBallPos.x + r, frontViewTargetBallPos.y + paddingText);
+      ctx.beginPath();
+      ctx.arc(frontViewShadowBallPos.x - r, frontViewShadowBallPos.y, 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'blue';
+      ctx.fill();
+      ctx.fillText('C', frontViewShadowBallPos.x - r, frontViewShadowBallPos.y + paddingText);
+      // 文字
+      ctx.fillStyle = 'black';
+      ctx.fill();
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('正视图', frontViewTargetBallPos.x + (frontViewShadowBallPos.x - frontViewTargetBallPos.x) / 2, frontViewTargetBallPos.y + 2 * r);
+      ctx.fillText('俯视图', targetBallPos.x, cueBallPos.y + 2 * r);
+
+    }
+  </script>
+</body>
+
+</html>
